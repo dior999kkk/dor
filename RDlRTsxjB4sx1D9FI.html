@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #FFFFFF;
+            text-align: center;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+        }
+        h1 {
+            color: #FFFFFF;
+        }
+        .grid-container {
+            display: grid;
+            gap: 10px;
+        }
+        .grid-item {
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            border-radius: 16px;
+        }
+        .grid-item.square {
+            padding-top: 100%; /* 1:1 Ratio */
+        }
+        .grid-item.wide {
+            padding-top: 66.66%; /* 3:2 Ratio */
+        }
+        .grid-item.portrait {
+            padding-top: 150%; /* 2:3 Ratio */
+        }
+        .grid-item.img-tiktok {
+            padding-top: 177.78%; /* 9:16 Ratio */
+        }
+        .grid-item.img-facebook {
+            padding-top: 75%; /* 4:3 Ratio */
+        }
+        .grid-item.img-instagram {
+            padding-top: 100%; /* 1:1 Ratio */
+        }
+        .grid-item.img-youtube {
+            padding-top: 56.25%; /* 16:9 Ratio */
+        }
+        .grid-item img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            margin: 0;
+            padding: 0;
+            border-radius: 16px;
+            max-width: 100%;
+        }
+        .generate-container {
+            margin: 20px 0;
+        }
+        .generate-input, .number-input, .style-select {
+            padding: 12px;
+            width: 150px;
+            margin-right: 10px;
+            font-size: 18px;
+            border: none;
+            background-color: #333333;
+            color: #FFFFFF;
+            outline: none;
+            border-radius: 16px;
+        }
+        .number-input {
+            width: 100px;
+        }
+        .generate-button {
+            background-color: #007bcc;
+            color: white;
+            padding: 12px 25px;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 16px;
+        }
+        .ratio-button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .ratio-button {
+            background-color: #333333;
+            color: white;
+            padding: 12px 25px;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 16px;
+        }
+        .grid-square {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+        }
+        .grid-wide {
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+        }
+        .grid-portrait {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+        }
+        .grid-tiktok, .grid-facebook, .grid-instagram, .grid-youtube {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+        }
+        .error-message {
+            color: #ff3333;
+            margin-top: 20px;
+        }
+        * {
+            outline: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Image Generator</h1>
+        <form method="GET" action="javascript:void(0);" id="generateForm">
+            <div class="generate-container">
+                <input class="generate-input" type="text" name="prompt" id="prompt" placeholder="Enter image description here">
+                <input class="number-input" type="number" name="count" id="count" min="1" max="100" placeholder="Number of images">
+                <select class="style-select" id="styleSelect" name="style">
+                    <option value="realistic">Realistic</option>
+                    <option value="artistic">Artistic</option>
+                    <option value="cartoon">Cartoon</option>
+                    <option value="vintage">Vintage</option>
+                    <option value="modern">Modern</option>
+                </select>
+                <button class="generate-button" type="button" onclick="generateImages()">Generate Images</button>
+            </div>
+        </form>
+        <div class="ratio-button-container">
+            <button class="ratio-button" onclick="setRatio('square')">Square</button>
+            <button class="ratio-button" onclick="setRatio('wide')">Wide</button>
+            <button class="ratio-button" onclick="setRatio('portrait')">Portrait</button>
+            <button class="ratio-button" onclick="setRatio('img-tiktok')">TikTok</button>
+            <button class="ratio-button" onclick="setRatio('img-facebook')">Facebook</button>
+            <button class="ratio-button" onclick="setRatio('img-instagram')">Instagram</button>
+            <button class="ratio-button" onclick="setRatio('img-youtube')">YouTube</button>
+        </div>
+        <div class="grid-container grid-square" id="imageGrid">
+            <!-- Images will be generated here -->
+        </div>
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+    <script>
+        let promptText = '';
+        let count = 16;
+        let ratio = 'square';
+        let style = 'realistic';
+
+        function setRatio(newRatio) {
+            ratio = newRatio;
+            const imageGrid = document.getElementById('imageGrid');
+            imageGrid.className = 'grid-container ' + 'grid-' + ratio;
+        }
+
+        async function generateImages() {
+            try {
+                promptText = document.getElementById('prompt').value.trim();
+                count = parseInt(document.getElementById('count').value) || 0;
+                style = document.getElementById('styleSelect').value;
+                if (!promptText || count < 1) {
+                    throw new Error('Please provide a valid description and number of images.');
+                }
+
+                document.getElementById('imageGrid').innerHTML = '';
+                document.getElementById('errorMessage').innerText = '';
+
+                // Simulate server call to generate images
+                for (let i = 1; i <= count; i++) {
+                    const imageContainer = document.createElement('div');
+                    imageContainer.className = `grid-item ${ratio}`;
+
+                    const img = document.createElement('img');
+                    img.src = `images/generated-${style}-${ratio}-${i}.jpg`; // Placeholder source
+                    img.alt = `Generated image ${i} for ${promptText.toLowerCase()} in ${style}`;
+                    img.style.maxWidth = '100%';
+
+                    imageContainer.appendChild(img);
+                    document.getElementById('imageGrid').appendChild(imageContainer);
+                }
+
+            } catch (error) {
+                console.error('Image generation failed:', error);
+                document.getElementById('errorMessage').innerText = error.message;
+            }
+        }
+
+        // Start with default ratio
+        setRatio('square');
+    </script>
+</body>
+</html>
+```
+
+### Changes Made:
+1. **Error Handling**: Added `try-catch` block in the `generateImages()` function to handle errors gracefully.
+2. **User Feedback**: Provided feedback to the user if an incorrect input is given, such as missing description or number of images.
+3. **Logging**: Added console logging for debugging purposes to trace errors if the image generation fails.
+
+This enhanced script will help identify potential issues and provide a user-friendly experience even when errors occur.
